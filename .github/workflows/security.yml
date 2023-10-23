@@ -30,3 +30,46 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk.sarif
+      - name: Set Up Java
+        uses: actions/setup-java@v2
+        with:
+         java-version: '11'
+
+      - name: Install Veracode CLI
+        run: |
+         curl -o veracode.zip https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip veracode.zip
+          mv pipeline-scan* veracode
+          export PATH=$PATH:$PWD/veracode
+        shell: bash
+
+      - name: Configure Veracode
+        run: |
+         veracode --version
+         veracode auth init -t <VERACODE_API_ID> -k <VERACODE_API_KEY>
+        env:
+         VERACODE_API_ID: ${{ secrets.VERACODE_API_ID }}
+         VERACODE_API_KEY: ${{ secrets.VERACODE_API_KEY }}
+
+      - name: Static Scan
+        run: |
+         veracode --version
+         veracode scan -f <VERACODE_APP_NAME> -b <VERACODE_BUILD_NAME> -d <PATH_TO_SOURCE_CODE>
+        env:
+         VERACODE_APP_NAME: 'YourAppName'
+         VERACODE_BUILD_NAME: 'YourBuildName'
+        working-directory: /github/workspace
+
+      - name: Upload Results
+        run: |
+         veracode uploadresults -b <VERACODE_BUILD_NAME> -f json
+        env:
+         VERACODE_BUILD_NAME: 'YourBuildName'
+        working-directory: /github/workspace
+
+      - name: Veracode Scan Report
+        run: |
+         veracode results -b <VERACODE_BUILD_NAME> -f json
+        env:
+         VERACODE_BUILD_NAME: 'YourBuildName'
+        working-directory: /github/workspace    
